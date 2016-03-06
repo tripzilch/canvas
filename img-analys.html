@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf8" />
+<style>
+* { margin: 0; padding: 0; }
+body {
+    background: #111;
+}
+canvas, textarea {
+    height: 600px;
+    margin: 25px;
+    display: block;
+    float: left;
+    border-radius: 24px;
+}
+canvas#a {
+    width: 800px;
+    background: #333;
+}
+canvas#b {
+    width: 450px;
+    background: #ccc;
+}
+textarea {
+    height: 550px;
+    width: 450px;
+    font: 12px/18px monospace;
+    background: #555;
+    border: none;
+    padding: 25px;
+    color: #ccc;
+}
+</style>
+<title>CANVAS IMAGE LOADING SCRIPT</title>
+</head>
+
+<body>
+    <canvas id="a"></canvas>
+    <canvas id="b"></canvas>
+    <textarea id='dbg'></textarea>    
+    
+    <script>    
+        var dbg = document.getElementById('dbg');
+        var canvas_a = document.getElementById('a');
+        canvas_a.width = 800;
+        canvas_a.height = 600;
+        var cxa = canvas_a.getContext('2d');
+
+        var canvas_b = document.getElementById('b');
+        canvas_b.width = 450;
+        canvas_b.height = 600;
+        var cxb = canvas_b.getContext('2d');
+                
+        function zeros(N) {
+            // returns an array of zeros with length N
+            var r = Array(N);
+            for (var i = 0; i < N; i++) r[i] = 0;
+            return r
+        }
+
+        var red = zeros(256);
+        var green = zeros(256);
+        var blue = zeros(256);
+        var alpha = zeros(256);
+        var im = new Image();
+        im.src = 'acce55.png';
+        im.onload = function () {
+            // je kan pas bij de pixels als het plaatje is geladen, dus moet dit in een onload functie                    
+            
+            // teken het plaatje in cxb
+            cxb.drawImage(im, 0, 0);im
+            // lees de pixels van het plaatje uit cxb
+            var image_data = cxb.getImageData(0, 0, im.width, im.height);
+            var width = image_data.width;
+            var height = image_data.height;
+            var pix8 = image_data.data;
+            
+            // deze loop telt (als voorbeeld) hoeveel rode, groene en blauwe pixels er zijn
+            var i = 0;
+            while (i < pix8.length) {
+                red[pix8[i]] += 1;
+                i++;                
+                green[pix8[i]] += 1;
+                i++;                
+                blue[pix8[i]] += 1;
+                i++;                
+                alpha[pix8[i]] += 1;
+                i++;                
+            }
+            
+            // alle pixels staan achter elkaar, in de volgorde R,G,B,A.
+            // dat betekent dat je de waarden voor een pixel op positie (x,y) kan vinden op
+            // i = (y * WIDTH + x) * 4
+            // met R op i+0, G op i+1, B op i+2 en A op i+3
+            // dus de groene pixel op positie 23,57 in een plaatje van 640x480 staat op:
+            // pix8[(57 * 640 + 23) * 4 + 1]
+            
+            // maaaarrrrr hiermee kan je alle vier RGBA bytes in een keer checken:
+            var pix32 = new Uint32Array(pix8.buffer);
+            // een pixel is dus 32 bits, waarvan de laagste 8 bits voor R zijn, de een-na-laagste 8 voor G, daarna B en dan A
+            // dan hoeft het dus ook niet meer *4 omdat iedere waarde in het array voor 32 bits staat:
+            function get_pixel32(x, y) {
+                return pix32[y * width + x];
+            }
+
+            var pp = get_pixel32(57,33);
+            var pp_hex = pp.toString(16);
+            dbg.value = "bijvoorbeeld, de pixel op (57, 33) heeft de waarde " + pp + " en in hex is dat " + pp_hex
+            
+            function get_pixel_css(x, y) {
+                var h = get_pixel32(x, y).toString(16).toUpperCase();
+                return '#' + h.substr(6,2) + h.substr(4,2) + h.substr(2,2);                
+            }
+            
+            dbg.value += "\n\nEn als je er heel gelukkig van wordt, deze functie maakt de CSS style hex: " + get_pixel_css(57, 33);
+            
+
+            // teken een paar grafiekjes van de kleur histogrammen            
+            cxa.strokeStyle = '#FF0000';
+            cxa.beginPath();
+            for (var i = 0; i < 256; i++) {
+                cxa.lineTo(i * 3, 550 - 50 * Math.log(red[i]));
+            }
+            cxa.stroke();
+            
+            cxa.strokeStyle = '#00FF00';
+            cxa.beginPath();
+            for (var i = 0; i < 256; i++) {
+                cxa.lineTo(i * 3, 550 - 50 * Math.log(green[i]));
+            }
+            cxa.stroke();
+            
+            cxa.strokeStyle = '#0000FF';
+            cxa.beginPath();
+            for (var i = 0; i < 256; i++) {
+                cxa.lineTo(i * 3, 550 - 50 * Math.log(blue[i]));
+            }
+            cxa.stroke();
+            
+        };
+    </script>
+</body>
+</html>
+
+

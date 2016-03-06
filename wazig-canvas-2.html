@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin: 0; padding: 0; }
+body {
+    background: #000;
+}
+canvas {
+    margin: 0px auto;
+    display: block;
+    border: 16px solid #000;
+}
+textarea {
+    margin: 0px auto;
+    width: 968px;
+    padding: 16px;
+    display: block;
+    border: 16px solid #000;
+    background: rgb(40,50,60);
+    color: rgba(192,204,204,0.6);
+    font: bold 16px/24px monospace;
+    opacity: 0.5;
+}
+</style>
+<title>GFX</title>
+</head>
+
+<body>
+    <canvas id="a"></canvas>
+    <textarea id='dbg'></textarea>
+    
+    <script>
+
+        var canvas = document.getElementById('a');       
+        var width = canvas.width = 1000;
+        var height = canvas.height = 600;
+        var ctx = canvas.getContext('2d');
+        var dbg = document.getElementById('dbg');
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';       
+
+        function mix(p,a,b) { return p * (a - b) + b; }
+        
+        var ft = 0;
+        var pp = [];
+        var t0 = Date.now();
+        
+        setInterval(function () {
+            var sin = Math.sin, cos = Math.cos, random = Math.random, pi = Math.PI, floor = Math.floor;
+            var pi2 = pi * 2;
+            var kleur = ['0,0,0', '128,0,192', '255,160,0'];
+            var t = (Date.now() - t0) / 1000;
+            function wave(dt, dn, a, dtt, dnn) { return sin(dt * t + dn * n + a * sin(dtt * t + dnn * n)) };
+            function circle(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, pi2); }             
+            var XX = 1;
+            function prng() { return (XX = XX * 16807 % 2147483647) % 99999 / 99999 }
+            function dv() { 
+                var p = prng() * pi2;
+                var f = prng() * 0.3 - 0.15; 
+                return sin(p + f * t); 
+            }
+            var p;
+            pp = [];
+            var N = 25;
+            var lx = 0, ly = 0, vx = dv(), vy = dv();
+            var x = 0, y = 0;
+            function step(c) {                
+                lx = x; ly = y;
+                x += vx + c * dv(); 
+                y += vy + c * dv(); 
+                vx += dv(); 
+                vy += dv();
+            }
+            var avgx=0,avgy=0,sumx2=0,sumy2=0;
+            step(20);
+            for (var i = 0; i < N; i++) {
+                p = [2 * x - lx, 2 * y - ly];
+                step(20);
+                p.push(x, y);
+                step(40);
+                p.push(x, y);
+                avgx+=x;avgy+=y;
+                sumx2+=x*x;sumy2+=y*y;
+                pp.push(p);
+            }
+            avgx/=N;avgy/=N;
+            var sigx = Math.sqrt((sumx2 / N) - avgx * avgx);
+            var sigy = Math.sqrt((sumy2 / N) - avgy * avgy);
+
+            var grad = ctx.createLinearGradient(0, 0, 0, height);
+            grad.addColorStop(0, '#888');
+            grad.addColorStop(0.5, '#ccc');
+            grad.addColorStop(1, '#888');
+            
+            
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.save();
+            ctx.translate(width / 2, height / 2);
+
+            ctx.lineWidth = 4;
+            ctx.fillStyle = 'rgba(40,50,60,1.0)';
+            ctx.strokeStyle = 'rgba(40,50,60,0.5)';
+            ctx.beginPath();
+            for (var i = 0; i < 15; i++) {
+                circle(dv() * width / 2, dv() * height / 2, 50 * dv() + 70);
+            }
+            ctx.fill();
+
+            var mid = Math.floor(N / 2);
+            ctx.translate(-pp[mid][4],-pp[mid][5]);
+            
+            ctx.beginPath();
+            ctx.moveTo(0,0);
+            pp.forEach(function (p) {
+                ctx.bezierCurveTo.apply(ctx, p); 
+            });
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = 'rgba(40,50,60,1.0)';
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            circle(avgx,avgy,Math.sqrt(sigx*sigx+sigy*sigy));
+            dbg.value = 'sigma_x = ' + Math.floor(sigx*100)/100 + '\nsigma_y = ' + Math.floor(sigy*100)/100;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            circle(0, 0, 4)
+            pp.forEach(function (p, i, a) {
+                circle(p[0] + 80 * dv(), p[1] + 80 * dv(), 3 + 2 * dv());
+                circle(p[2] + 60 * dv(), p[3] + 60 * dv(), 4 + 3 * dv());
+                circle(p[4] + 20 * dv(), p[5] + 20 * dv(), 7 + 4 * dv());
+            });
+            ctx.lineWidth = 4;
+            ctx.fillStyle = 'rgba(40,50,60,1.0)';
+            ctx.strokeStyle = 'rgba(40,50,60,0.5)';
+            ctx.fill();
+            ctx.restore();
+        }, 40);        
+
+    </script>
+</body>
+
+</html>

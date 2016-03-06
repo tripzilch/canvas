@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8' />
+<style>
+* { margin: 0; padding: 0; }
+body {
+    background: #000;
+}
+canvas {
+    margin: 32px auto;
+    display: block;
+}
+textarea {
+    margin: 8px auto;
+    width: 784px;
+    padding: 0px 8px;
+    background: #000;
+    color: rgba(192,204,204,0.6);
+    font: bold 16px/24px monospace;
+    height: 48px;
+    display: block;
+    border: none;
+}
+</style>
+<title>GFX</title>
+</head>
+
+<body>
+    <canvas id="a"></canvas>
+    <textarea id='dbg'>KIP</textarea>
+    
+    <script>
+        var canvas = document.getElementById('a');       
+        var width = canvas.width = 1200;
+        var height = canvas.height = 700;
+        var ctx = canvas.getContext('2d');
+        var dbg = document.getElementById('dbg');
+        var start_time = Date.now()
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';       
+
+        function randr(lo, hi) { return lo + ((hi - lo) * Math.random()) }
+        function mix(p,a,b) { return p * (a - b) + b; }
+                
+        var sin = Math.sin, cos = Math.cos, random = Math.random, pi = Math.PI, floor = Math.floor;
+        var pow = Math.pow, log = Math.log, max = Math.max, abs = Math.abs;
+        var tau = pi * 2;
+                
+        var N_pix = width * height;
+        var buf = new Uint32Array(N_pix);
+        var N = 1000, N_skip = 150;
+        var h2 = height - 16, w2 = width - 16, Rx = random(), Ry = random(), p = 0.1;
+        var eps = 1 / height, x = 0;
+        for (var xx = 0; xx < w2; xx+=.05) {
+            x = random();
+            var r = 0.0 + 4.0 * xx / w2;
+            for (var i = 0; i < N; i++) {
+                x = abs(cos(x * r + x * x * (1-x)));
+                if (!isFinite(x) || x < 0 || x > 1) break;
+                if (i > N_skip) {
+                    buf[floor(xx) + width * floor(x * h2)]++;
+                }
+            }
+        }
+        
+        // render buffer to canvas pixel buffer, log exposure
+        var imgdata = ctx.createImageData(width, height);
+        var pixbuf = imgdata.data;
+        var mx = 0;
+        for(var i = 0; i < N_pix; i++) mx = max(mx, buf[i]);
+        for (var i = 0; i < N_pix; i++) {
+            var a = buf[i] / mx;
+            pixbuf[i * 4 + 0] = 400 * pow(a, 0.55);
+            pixbuf[i * 4 + 1] = 600 * pow(a, 0.6);
+            pixbuf[i * 4 + 2] = 400 * pow(a, 0.9);
+            pixbuf[i * 4 + 3] = 255;
+        }
+        ctx.putImageData(imgdata,0,0);                        
+        dbg.value = 'Time: ' + (Date.now() - start_time) / 1000 + 's.';
+
+    </script>
+</body>
+
+</html>

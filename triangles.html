@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8' />
+<style>
+* { margin: 0; padding: 0; }
+body {
+    background: #000;
+}
+canvas {
+    margin: 8px auto;
+    display: block;
+}
+textarea {
+    margin: 8px auto;
+    width: 984px;
+    padding: 0px 8px;
+    display: none;
+    background: #000;
+    color: #008;
+    font: bold 16px/24px monospace;
+    height: 24px;
+}
+</style>
+<title>GFX</title>
+</head>
+
+<body>
+    <canvas id="a"></canvas>
+    <textarea id='dbg'></textarea>
+
+    <script>
+        var canvas = document.getElementById('a');
+        var width = canvas.width = 1000;
+        var height = canvas.height = 480;
+        var ctx = canvas.getContext('2d');
+        var dbg = document.getElementById('dbg');
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        function randr(lo, hi) { return lo + ((hi - lo) * Math.random()) }
+        function mix(p,a,b) { return p * (a - b) + b; }
+
+        var sin = Math.sin, cos = Math.cos, random = Math.random, pi = Math.PI, floor = Math.floor;
+        var pow = Math.pow, max = Math.max, min = Math.min;
+        var tau = pi * 2;
+        function circle(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, tau); }
+        function ellipse(x, y, r1, r2, angle) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(r1, r2);
+            ctx.moveTo(1, 0)
+            ctx.arc(0, 0, 1, 0, tau);
+            ctx.restore();
+        }
+
+        var t0 = Date.now();
+
+        var pp = [];
+        var N = 150;
+        for (var i = 0; i < N; i++) {
+            pp.push(randr(-1, 1));
+        }
+        background='#48f';
+
+        color0 = '#003';
+        color1 = '#93f';
+        color2 = '#fd0';
+
+        function rr(i) { return pp[floor(i) % N]; }
+
+        function step() {
+            var now = Date.now() - t0;
+
+            var offset = now / 100;
+            // dbg.value = "TING " + offset;
+
+            ctx.fillStyle = background;
+
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.beginPath();
+            // ctx.moveTo(-width / N, height / 2);
+            for (var i = 0; i < N; i++) {
+                var ii = (i + .5) / N;
+                var hamw = (1 - cos(ii * tau)) / 2;
+                var cx = width * ii + 75 * hamw * rr(i + offset + 5);
+                var cy = height / 2 + 100 * hamw * rr(i + offset + 25);
+                var x = width * ii + 75 * hamw * rr(i + offset + 5);
+                var y = height / 2 + 100 * hamw * rr(i + offset + 15);
+                ctx.bezierCurveTo(cx, cy, (cx + x) / 2, (cy + y) / 2, x, y);
+            }
+            ctx.strokeStyle = color0;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            window.requestAnimationFrame(step);
+        }
+        step();
+    </script>
+</body>
+
+</html>

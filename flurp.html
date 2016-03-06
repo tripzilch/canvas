@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8' />
+<style>
+* { margin: 0; padding: 0; }
+body {
+    background: #000;
+}
+canvas {
+    margin: 8px auto;
+    display: block;
+    background: url(flurp-back.jpg);
+}
+textarea {
+    margin: 8px auto;
+    width: 984px;
+    padding: 0px 8px;
+    display: block;
+    background: #223344;
+    color: rgba(192,204,204,0.6);
+    font: bold 16px/24px monospace;
+    height: 24px;
+}
+</style>
+<title>FLURP</title>
+</head>
+
+<body>
+    <canvas id="a"></canvas>
+    <textarea id='dbg'></textarea>
+    
+    <script>
+        var canvas = document.getElementById('a');       
+        var width = canvas.width = 600;
+        var height = canvas.height = 600;
+        var ctx = canvas.getContext('2d');
+        var dbg = document.getElementById('dbg');
+
+        lineCap = ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';       
+
+        function randr(lo, hi) { return lo + ((hi - lo) * Math.random()) }
+        function mix(p,a,b) { return p * (a - b) + b; }
+                
+        var sin = Math.sin, cos = Math.cos, random = Math.random, pi = Math.PI, floor = Math.floor;
+        var pow = Math.pow, sqrt = Math.sqrt, max = Math.max, min = Math.min;
+        var sqr = function (x) { return x * x };
+        var tau = pi * 2;
+        background='#030';
+        
+        color0 = '#4C0';
+        color1 = '#8C0';
+        color2 = '#fd0';
+        
+        var avatar = new Image();
+        var background = new Image();
+        var pipe_img = new Image();
+        background.src = 'flurp-back.jpg';
+        avatar.src = 'flurp.png';
+        pipe_img.src = 'flurp-pipe.png'
+        
+        
+        var frame = 0;
+        var y0, y, t, t0=Date.now() / 1000;
+        var can_flap = true;
+        var running = false;
+        var pipe_speed = 0.5;
+        
+        function new_pipe(t, y) { return {t0: t, y: y + 200 + 200 * Math.random()} }
+        
+        var pipes = [];
+        for (var i = 0; i < 3; i++) pipes.push({
+            t0: t0 + 0.4 * i / pipe_speed,
+            y: randr(250, 350)
+        });
+        
+        function step() {
+            var t = Date.now() / 1000;
+            frame++;
+            
+            /*  Let distance between ground and top of screen=100. Bird position after a flap at y=y0, time=t0:
+                y(t) = y0 + 13.8 - 147 * (t - t0 - 0.288)^2             */
+            if (running) {
+                y = y0 + 13.8 - 147 * sqr(t - t0 - 0.288);
+            } else {
+                y0 = y = 50;
+                
+            }
+            
+            if (y < 0) running = false;          
+            dbg.value = y;
+
+            if (key && can_flap) {
+                running = true;
+                t0 = t;
+                y0 = y;
+                can_flap = false;
+            }
+            if (key == false) can_flap = true;            
+
+            ctx.drawImage(background, 0, 0);
+            ctx.drawImage(avatar, width * 0.25, height * (100 - y) / 100);
+            var px, py;
+            for (var i = 0; pipe = pipes[i]; i++) {
+                px = 664 + 600 * (pipe.t0 - t) * pipe_speed;
+                dbg.value += '    ' + px;
+                if (px > 0) {
+                    ctx.drawImage(pipe_img, px - 64, pipe.y - 700);
+                } else {
+                    pipes[i] = {
+                        t0: t,
+                        y: randr(300,300)
+                    };
+                }
+            }
+            window.requestAnimationFrame(step);
+        }
+        window.requestAnimationFrame(step);
+        
+        var key = false;
+        document.addEventListener('keydown', function (ev) {
+            key = ev.which;
+        }, false);
+        
+        document.addEventListener('keyup', function (ev) {
+            key = false;
+        }, false);
+        
+        
+    </script>
+</body>
+
+</html>

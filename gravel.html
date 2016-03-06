@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GRAVEL</title>
+    <meta charset="utf-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #111; }
+
+        #container {
+            background: #333;
+            width: 750px;
+            height: 750px;
+            margin: 0px auto;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            width: 750px;
+            position: absolute;
+        }
+
+        #controls {
+            display: block;
+            width: 750px;
+            background: #111;
+            opacity: 0.6;
+            text-align: right;
+            position: absolute;
+            top: 0px;
+            right: 0px;
+        }
+        #controls label {
+            float: left; clear: left;
+            display: block;
+            width: 60px;
+            height: 20px;
+            padding: 10px;
+            color: #fff;
+            font: bold 12px/20px Consolas, monospace;
+        }
+        #controls input {
+            float: left;
+            display: block;
+            width: 300px;
+            height: 30px;
+            margin: 5px 0px 5px 50px;
+            position: relative;
+        }
+        textarea {
+            display: block;
+            width: 750px;
+            height: 50px;
+            padding: 5px;
+            background: #000;
+            color: #666;
+            border: none;
+            font: bold 12px/18px monospace;
+            position: absolute;
+            bottom: -60px;
+        }
+
+
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <canvas id="c"></canvas>
+        <form id="controls">
+            <label for="alpha" id="alpha-label">Alpha</label> <input id="alpha" type="range" min="0.0" max="1.0" step="0.01"  value="0.5" />
+        </form>
+        <textarea id='dbg'>PRO</textarea>
+    </div>
+    <script>
+        // == init canvas
+        var canvas = document.getElementById('c');
+        var width = canvas.width = 750;
+        var height = canvas.height = 750;
+        var ctx = canvas.getContext('2d');
+        var dbg = document.getElementById('dbg');
+        var controls = document.getElementById('controls');
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        function randr(lo, hi) { return lo + ((hi - lo) * Math.random()) }
+
+        // == math shortcuts
+        var sin = Math.sin, cos = Math.cos, random = Math.random, pi = Math.PI, floor = Math.floor;
+        var pow = Math.pow, max = Math.max, min = Math.min, sqrt = Math.sqrt;
+        var tau = pi * 2;
+
+        // == drawing
+        var palette = ['#666', '#fff', '#ccc', '#999'];
+
+        function circle(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, tau); ctx.closePath(); }
+        function ellipse(x, y, r1, r2, angle) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(r1, r2);
+            ctx.moveTo(1, 0)
+            ctx.arc(0, 0, 1, 0, tau);
+            ctx.restore();
+        }
+        function clear_background(fillStyle) {
+            ctx.fillStyle = fillStyle || palette[0];
+            ctx.fillRect(-width/2, -height/2, width, height);
+        }
+
+        function bezier() {}
+
+        // == interactive parameter controls
+        var para;
+        function get_params() {
+            var p = {};
+            for (var i = 0, e; e = controls.elements[i]; i++)
+                p[e.id] = e.valueAsNumber;
+            // scale conversions [optional]
+            // p.limit *= (Math.pow(2, p.depth) - 1) / 100.0;
+            return p;
+        }
+        function update() {
+            para = get_params()
+            var id;
+            for (id in para) {
+                var el = document.querySelector('[for=' + id + ']');
+                if (el) el.innerHTML = para[id];
+            }
+
+            // ...
+        }
+        // update on control slider changes
+        controls.addEventListener('input', update, false);
+        // slider content number value updating magic
+        controls.addEventListener('input', function (e) { e.target.setAttribute('value', e.target.value) }, false);
+
+        function cos_window(t) { return (1 - cos(t * tau)) / 2; }
+        function pcos_window(t, p) { return cos_window(pow(t, p)); }
+
+        function draw_thing(x, y, t) {
+            var r = cos_window(t);
+            ctx.strokeStyle = palette[1];
+            ctx.beginPath();
+            ellipse(x, y, r, r, 0);
+            ctx.stroke();
+        }
+
+        // == animation
+        var t0 = Date.now();
+        var running = true;
+        ctx.translate(height/2, width/2);
+        function step() {
+            var now = Date.now() - t0;
+            var t = now / 1000;
+            clear_background();
+            // ...
+            ctx.beginPath();
+            var PHI = (1 + sqrt(5)) / 2;
+            var PHI_r = tau / PHI / PHI;
+            var phi = t / 50;
+            for (var i = 1; i < 200; i++) {
+                var r = sqrt(i) * 37.5;
+                phi += PHI_r * 2 * para['alpha'];
+                var s = (1.1 + sin(r * .01 + t * .6)) * 8;
+                circle(r * cos(phi), r * sin(phi), s);
+            }
+            ctx.fillStyle = palette[1];
+            ctx.fill();
+
+            if (running) window.requestAnimationFrame(step);
+        }
+
+        // == start everything
+        update();
+        step();
+        clear_background();
+    </script>
+</body>
+
+</html>

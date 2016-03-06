@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8' />
+<style>
+* { margin: 0; padding: 0; }
+body {
+    background: #000;
+}
+canvas {
+    margin: 8px auto;
+    display: block;
+}
+textarea {
+    margin: 8px auto;
+    width: 984px;
+    padding: 0px 8px;
+    display: block;
+    background: #223344;
+    color: rgba(192,204,204,0.6);
+    font: bold 16px/24px monospace;
+    height: 24px;
+}
+</style>
+<title>GFX</title>
+</head>
+
+<body>
+    <canvas id="a"></canvas>
+    <textarea id='dbg'></textarea>
+    
+    <script>
+        var canvas = document.getElementById('a');       
+        var width = canvas.width = 1000;
+        var height = canvas.height = 600;
+        var ctx = canvas.getContext('2d');
+        var dbg = document.getElementById('dbg');
+
+        var bcan = document.createElement('canvas');
+        bcan.width = width; bcan.height = height;
+        bctx = bcan.getContext('2d');
+
+        bctx.lineCap = ctx.lineCap = 'round';
+        bctx.lineJoin = ctx.lineJoin = 'round';       
+
+        function randr(lo, hi) { return lo + ((hi - lo) * Math.random()) }
+        function mix(p,a,b) { return p * (a - b) + b; }
+                
+        var sin = Math.sin, cos = Math.cos, random = Math.random, pi = Math.PI, floor = Math.floor;
+        var pow = Math.pow, sqrt = Math.sqrt;
+        var tau = pi * 2;
+        function circle(cx, x, y, r) { cx.moveTo(x + r, y); cx.arc(x, y, r, 0, tau); }             
+
+        function add_noise(ar, amount) {
+            var L = ar.length;
+            for (var i = 0; i < L; i++) {
+                ar[i] = ar[i] + Math.random() * amount;
+            }
+        }
+
+        function diffuse(ar) {
+            var L = ar.length;
+            var a0 = pa = ar[0];
+            var ai, i;
+            ar[0] = (ar[L - 1] + 2 * a0 + ar[1]) / 4;
+            for (i = 1; i < L - 1; i++) {
+                ai = (pa + 2 * ar[i] + ar[i + 1]) / 4;
+                pa = ar[i];
+                ar[i] = ai
+            }
+            ar[i] = (pa + 2 * ar[i] + a0) / 4;
+        }
+
+        function diffuseN(ar, times) {
+            for (var i = 0; i < times; i++) diffuse(ar);
+        }
+
+        function argmax(ar) {
+            var L = ar.length, m = ar[0], mi=0;
+            for (var i = 1; i < L; i++) {
+              if (ar[i] > m) { m = ar[i]; mi = i; }
+            }
+            return mi;
+        }
+
+        function sum(ar) {
+            var L = ar.length, res = 0;
+            for (var i = 0; i < L; i++) res += ar[i];
+            return res;
+        }
+
+        var cc = [];
+        for (var i = 0; i < 360; i++) cc.push(0);
+        add_noise(cc, 0.1);
+
+        background='#030';
+        
+        color0 = '#4C0';
+        color1 = '#8C0';
+        color2 = '#fd0';
+
+
+        ctx.translate(width/2, height/2);
+        ctx.fillStyle = background;
+        ctx.fillRect(-width/2, -height/2, width, height);
+        
+        bctx.translate(width/2, height/2);
+        bctx.fillStyle = background;
+        bctx.fillRect(-width/2, -height/2, width, height);
+
+        var frame = 0;
+        var rspeed = 300 / sqrt(9000);
+        var dspeed = 20;
+        function step() {
+            var now = Date.now();
+            frame++;
+            var i;
+            var L = cc.length, a, r;
+            var radius = 3+sqrt(frame ) * rspeed;
+            
+            //ctx.fillStyle = background;
+            //ctx.fillRect(-width/2, -height/2, width, height);
+            ctx.drawImage(bcan, -width/2, -height/2);
+            
+            ctx.beginPath();
+            for (i = 0; i < L; i++) {
+                a = -tau * (i / L);
+                r = radius * (1 + cc[i]);
+                ctx.lineTo(cos(a) * r, sin(a) * r);
+                cc[i] *= .99;
+            }
+            ctx.closePath();
+            ctx.strokeStyle = color0;
+            ctx.stroke();
+
+            add_noise(cc, 0.7 / dspeed);
+            if (frame % dspeed == 0) {
+                var mi = argmax(cc), sum_cc = sum(cc);
+                cc[mi] = 0; //.1 * sum_cc;
+                bctx.beginPath();
+                a = -tau * (mi / L);
+                circle(bctx, radius * cos(a), radius * sin(a), 1.5);
+                bctx.fillStyle = color1;
+                bctx.fill();
+            }
+            diffuseN(cc, 360 / dspeed);
+
+                  
+            dbg.value = "total juice = " + sum(cc);
+            window.requestAnimationFrame(step);
+        }
+        window.requestAnimationFrame(step);
+    </script>
+</body>
+
+</html>

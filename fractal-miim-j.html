@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Canvas voorbeeld</title>
+    <meta charset="utf-8">
+    <style>
+        /*  SMURF #4090B0
+            NOONSKY #007090
+            ANTIFREEZE #005060
+
+            IVORY #FFFFF0
+            COMPUTER #E0E0D0
+            ROCK #808070
+        */
+
+        * { margin: 0; padding: 0; }        
+        body { background: #222; }
+        #container {
+            width: 1040px;
+            margin: 8px auto;
+            overflow: hidden;
+            position: relative;
+        }
+        canvas {
+            margin: 0 16px 16px 0;
+            background: #f00;
+            float: left;
+            position: relative;
+        }
+        .boxC {
+            width: 608px;
+            height: 192px;
+            margin: 0 16px 16px 0;
+            float: left;
+            position: relative;
+        }
+        .boxD {
+            width: 192px;
+            height: 192px;
+            margin: 0 16px 16px 0;
+            float: left;
+            position: relative;
+        }
+        .smurf { background: #4090B0; }
+        .antifreeze { background: #005060; }
+        .noonsky { background: #007090; }
+        .rock { background: #808070; }
+        p {
+            font: bold 24px/32px Consolas, monospace;
+            white-space: pre-wrap;
+            margin: 8px;
+            color: #222;
+        }
+        #prob {
+            margin: 16px;
+            width: 512px;
+            opacity: 0.6;
+        }
+        #prob:after {
+            display:block;
+            position: absolute;
+            top: 96px;
+            left: 16px;
+            font: 24px/32px Consolas, monospace;
+            content: attr(value);
+            color: #222;
+        }
+        #xtarget {
+            height: 8px; width: 8px;
+            border: 2px solid rgba(0,0,0,0.5);
+            background: rgba(255,255,224,0.2);
+            border-radius: 4px;
+            position: absolute;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <canvas id="c" width="608" height="400"></canvas>
+        <canvas id="m" width="400" height="400"></canvas>        <div id="xtarget"></div>
+        <div class="boxD antifreeze"><p>(c)BBB<sub>13</sub></p></div>
+        <div class="boxD noonsky"><p id="info"></p></div>
+        <div class="boxC rock"><p>Branch probability</p><input id="prob" type="range" min="0.0" max="1.00" step="0.005"  value="0.05" /></div>
+    </div>
+    <script>
+        function CTX(canvas) {
+            // public members
+            this.canvas = canvas;
+            var ctx = this.ctx = canvas.getContext('2d');
+            var width = this.width = canvas.width;
+            var height = this.height = canvas.height;
+            var short_edge = this.short_edge = Math.min(width, height);
+            var long_edge = this.long_edge = Math.max(width, height);
+            var img = this.img = ctx.getImageData(0, 0, width, height);
+            var buf = this.buf = img.data;
+            var L = this.L = buf.length;
+            var width4 = this.width4 = img.width * 4;
+
+            // public methods
+
+            var flip = this.flip = function flip() {
+                ctx.putImageData(img, 0, 0);
+            }
+
+            var clear = this.clear = function clear(color) {
+                for (var i = 0; i < L; i+=4) {
+                    buf[i] = 0x00;
+                    buf[i+1] = 0x70;
+                    buf[i+2] = 0x90;
+                    buf[i+3] = 0xFF;
+                }
+                flip();
+            }
+            //clear();
+
+            var fpixel = this.fpixel = function fpixel(x, y) {
+                // anti aliased wu-pixel
+                var xi = Math.floor(x), yi = Math.floor(y);
+                var xf = x - xi, yf = y - yi;
+
+                var c = (1-xf) * (1-yf);
+                var i = 4 * (xi + width * yi);
+                buf[i] += c * 16;
+                buf[i+1] += c * 16;
+                buf[i+2] += c * 8;
+
+                c = (xf) * (1-yf);
+                i += 4;
+                buf[i] += c * 16;
+                buf[i+1] += c * 16;
+                buf[i+2] += c * 8;
+
+                c = (xf) * (yf);
+                i += width4;
+                buf[i] += c * 16;
+                buf[i+1] += c * 16;
+                buf[i+2] += c * 8;
+
+                c = (1-xf) * (yf);
+                i -= 4;
+                buf[i] += c * 16;
+                buf[i+1] += c * 16;
+                buf[i+2] += c * 8;
+            }
+        }
+
+        var CC = new CTX(document.getElementById("c"));
+        var CM = new CTX(document.getElementById("m"));
+        var container = document.getElementById('container');
+        var xtarget = document.getElementById('xtarget');
+        var info = document.getElementById('info');
+        var prob = document.getElementById('prob');
+
+        xtarget.style.marginLeft =(CM.canvas.getBoundingClientRect().left - container.getBoundingClientRect().left - xtarget.getBoundingClientRect().width / 2) + 'px';
+        xtarget.style.marginTop = (CM.canvas.getBoundingClientRect().top - container.getBoundingClientRect().top - xtarget.getBoundingClientRect().width / 2) + 'px';
+
+        var CCr = -.8, CCi = 0.3;
+        
+        var work;
+        (function updiz() {
+            if (work) work();
+            setTimeout(updiz, 200);            
+        })();
+        function reverse_julia(DEST, Cr, Ci) {
+            /* Julia iteration
+                    Z := Z^2 + C
+               Reverse Julia iteration
+                    Z := +/- sqrt(Z - C)
+            */
+
+            CCr = Cr = Cr || CCr;
+            CCi = Ci = Ci || CCi;
+            xtarget.style.left = Math.round(CM.left(Cr)) + 'px';
+            xtarget.style.top = Math.round(CM.top(Ci)) + 'px';
+            info.innerText = '(' + (Math.round(Cr*1000)/1000) + ', ' + (Math.round(Ci*1000)/1000) + ')';
+
+            var M = DEST.long_edge / 4, x0 = DEST.width / 2, y0 = DEST.height / 2;
+            var Zr = Math.random() * 4 - 2, Zi = Math.random() * 4 - 2;
+            var sgn = 1, r;
+
+            var i = -100;
+            DEST.clear();
+            (work = function () {
+                DEST.ctx.fillStyle = '#007090';
+                DEST.ctx.fillRect(0,0,DEST.width,50);
+                DEST.ctx.fillStyle = 'rgba(224,255,208,0.1)';
+                var p = prob.valueAsNumber;
+                var pa = rprime(4), 
+                    pb = rprime(4) * rprime(5), 
+                    pc = rprime(4) * rprime(5) * rprime(6);
+                info.innerText = just4(pa) + just4(pb) + just4(pc);
+                var phi = 1 + Math.floor(17 * Math.random());
+                var mod = 1 + Math.floor(17 * Math.random());
+                for (var j = 0; j < 9999; i++, j++) {
+                    // Z := Z - C
+                    Zr -= Cr;
+                    Zi -= Ci;
+                    // Z := +/- sqrt(Z)
+                    // (try: choose root closest to C)                    
+                    if (i % pa == 0) sgn = -sgn;
+                    if (i % pb == 0) sgn = -sgn;
+                    if (i % pc == 0) sgn = -sgn;
+                    if (Math.random() < p) sgn = -sgn;
+                    if (sgn > 0) {
+                        DEST.ctx.fillRect(j % 600, j / 600, 1, 1);
+                    }
+
+                    r = Math.sqrt(Zr * Zr + Zi * Zi);
+                    Zi = sgn * (Zi < 0 ? -1 : 1) * Math.sqrt((r - Zr) / 2);
+                    Zr = sgn * Math.sqrt((r + Zr) / 2);
+
+                    if (i > 0) {
+                        // DEST.fpixel(x0 + M * Zr, y0 + M * Zi);
+                        // DEST.fpixel(x0 - M * Zr, y0 - M * Zi);
+                        DEST.ctx.fillRect(x0 + M * Zr, y0 + M * Zi, 0.5, 0.5);
+                        DEST.ctx.fillRect(x0 - M * Zr, y0 - M * Zi, 0.5, 0.5);
+                    };
+                    Zr += (Math.random()-0.5) / M;
+                    Zi += (Math.random()-0.5) / M;
+                }                
+            })();
+        }
+        function irand(hi) { return Math.floor(hi * Math.random()) }
+        function rprime(N) { return [2,3,5,7,11,13,17,19,23,29,31,37][irand(N)] }
+        function just4(s) { return ('    '+s).substr(-4) }
+
+        function mandelbrot_pixel(Cr, Ci, maxiter) {
+            maxiter = maxiter || 32;
+            var Zr = Cr, Zi = Ci, Zr_, Zr2, Zi2;
+            for (var i = 0; i < maxiter; i++) {
+                if (Zr * Zr + Zi * Zi > 16) return i;
+                Zr_ = Zr;
+                Zr = Zr * Zr - Zi * Zi + Cr;
+                Zi = 2 * Zr_ * Zi + Ci;
+            }
+            return i;
+        }
+
+        function mandelbrot(DEST, x0, y0, mag) {
+            var x, y;
+            var L = DEST.L, W4 = DEST.width4, H = DEST.height, buf = DEST.buf;
+            for (var i = 0; i < L; i+= 4) {
+                x = ((i % W4) / (W4 - 4) - 0.5) * mag + x0;
+                y = (Math.floor(i / (W4 - 4)) / H - 0.5) * mag + y0;
+                c = mandelbrot_pixel(x, y);
+                buf[i] = 0xE0 - c * 5;
+                buf[i+1] = 0xE0 -  c * 2.5;
+                buf[i+2] = 0xD0 -  c * 1;
+                buf[i+3] = 255;
+            }
+            DEST.flip();
+            DEST.ax_x = function (x) { return (x / this.width - 0.5) * mag + x0; };
+            DEST.ax_y = function (y) { return (y / this.height - 0.5) * mag + y0; };
+            DEST.left = function (x) { return Math.round(((x - x0) / mag + 0.5) * this.width); };
+            DEST.top = function (y) { return Math.round(((y - y0) / mag + 0.5) * this.height); };
+        }
+
+        mandelbrot(CM, -0.6, 0.5 / CM.height, 2.5);
+        reverse_julia(CC);
+
+        document.addEventListener('click', function (ev) {
+            var x = ev.clientX - CM.canvas.getBoundingClientRect().left;
+            var y = ev.clientY - CM.canvas.getBoundingClientRect().top;
+            if (x < 0 || y < 0 || x >= CM.width || y >= CM.height) return;
+            reverse_julia(CC, CM.ax_x(x), CM.ax_y(y));
+            console.log(x, y);
+        }, true);
+
+        /*var slider_iid;
+        prob.addEventListener('change', function() {
+            clearTimeout(slider_iid);
+            slider_iid = setTimeout(reverse_julia.bind(this, CC), 500);
+        }, false);*/
+        // slider content number value updating magic
+        prob.addEventListener('change', function (e) { e.target.setAttribute('value', e.target.value) }, false);
+        CC.canvas.addEventListener('dblclick', CC.clear);
+    </script>
+</body>
+
+</html>
+
+
+
+

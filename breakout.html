@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Breakout</title>
+    <meta charset="utf-8">
+    <style>
+        * { margin: 0; padding: 0; }
+        body { background: #000;
+        	}
+        canvas {
+    margin: 20px;
+            border: 1px solid #0f0;
+            background: #686868;
+        }
+
+    </style>
+</head>
+
+<body>
+    <canvas id="c" width="400" height="400"></canvas>
+    <script>
+        // == init canvas
+        var canvas = document.getElementById("c");
+        var ctx = canvas.getContext('2d');
+        var width = canvas.width;
+        var height = canvas.height;
+
+
+        // drawing
+        function circle(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, pi2); }
+
+        function point_in_rectangle(x, y, rect) {
+            // (x,y) is het punt, rect is de rectangle (met properties x,y,w,h)
+            return (x < rect.x + rect.w)
+                && (x > rect.x)
+                && (y < rect.y + rect.h)
+                && (y > rect.y);
+        }
+
+        function collision(rectA,rectB){
+            // rectA en rectB zijn rectangles (met properties x,y,w,h)
+            var max = Math.max, min = Math.min;
+            return max(rectA.x, rectB.x) <= min(rectA.x + rectA.w, rectB.x + rectB.w)
+                && max(rectA.y, rectB.y) <= min(rectA.y + rectA.h, rectB.y + rectB.h);
+        }
+
+        var background = '#000';
+        var ball = {x: width/2, y: height - 59, vx: 4, vy: -6, style: '#fff', w: 16, h: 16};
+        var player = { x: width / 2, y: height - 50, w: 64, h: 8, style: '#ffff00'};
+
+        var wall_left = {x: -100, y: -100, w: 100, h: height+200};
+        var wall_right = {x: width, y: -100, w: 100, h: height+200} ;
+        var wall_top = {x: -100, y: -100, w: width+200, h: 100};
+        var wall_bottom = {x: -100, y: height, w: width+200, h: 100};
+
+        var blocks = [];
+        for (var j = 0; j < 5; j++) {
+            for (var i = 0; i < 10; i++) {
+                blocks.push({x: 4+i*40, y: 16+j*32, w: 32, h: 24, style: "#ff0000"})
+            };
+        }
+
+        /* var level = ["........X.",
+                     "........X.",
+                     "XXX...XXXX",
+                     "X.X.X.X.X.",
+                     "XXXXXXXXXX",
+                     ".........."];
+        for (var y = 0; y < level.length; y++){
+            var line = level[y];
+            for (var x = 0; x < line.length; x++) {
+                var c = line[x];
+                if (c == 'X') {
+                    blocks.push({x: x * 40 + 4, y: y * 32 + 4, w: 32, h: 24, style: '#ff0000'});
+                }
+            }
+        } */
+
+        var lives = 3;
+        var points = 0;
+
+        function one_frame() {
+            // teken 1 frame
+
+            // update player
+            if (key == 37) { player.x = player.x - 6 };
+            if (key == 39) { player.x = player.x + 6 };
+
+            if (collision(player, wall_left)) { player.x = 0 };
+            if (collision(player, wall_right)) { player.x = width - player.w};
+
+            // update positie
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            if (collision(ball, wall_left) || collision(ball, wall_right)) ball.vx = -ball.vx; // stuiter tegen muur links/rechts
+
+
+            if (collision(ball, wall_top)) ball.vy = -ball.vy;                        // stuiter tegen bovenkant
+
+            if (collision(ball, player)) {
+                if (ball.vy > 0) ball.vy = -ball.vy;
+                ball.vx = (ball.vx + (ball.x + ball.w/2 - (player.x + player.w/2))/4)/2;
+            }
+
+            if (collision(ball, wall_bottom))  {                                 // raak onderkant
+                ball.y = player.y-ball.h;
+                ball.x = player.x+player.w/2-ball.w/2;
+                ball.vx = 0;
+                ball.vy = -Math.abs(ball.vy);
+				lives -= 1;
+            }
+
+           for (var i = 0; i < blocks.length; i++ ){
+                if(collision(ball,blocks[i])){
+                    ball.vy = -ball.vy;
+                    blocks.splice(i, 1);
+					points += 10;
+                };
+            }
+
+
+            //if (ball.x == player.x && ball.y == player.y) { ball.vx = -ball.vx; ball.vy = -ball.vy			}
+
+			// clear background
+            ctx.fillStyle = background;
+            ctx.fillRect(0,0,width,height);
+            // tekenen
+            ctx.fillStyle = ball.style;
+            ctx.fillRect(ball.x, ball.y, ball.w, ball.h);
+            ctx.fillStyle = player.style;
+            ctx.font = '10px monospace';
+			ctx.fillText("Score "+points, 10,10);
+            ctx.fillText("Lives "+lives, 70, 10);
+            ctx.fillRect(player.x, player.y, player.w, player.h);
+            for (var i = 0; i < blocks.length; i++ ){
+                ctx.fillStyle = blocks[i].style;
+                ctx.fillRect(blocks[i].x, blocks[i].y, blocks[i].w, blocks[i].h);
+            }
+			if(lives == 0){
+                clearInterval(iid);                
+                ctx.font = '60px Impact';
+                ctx.fillStyle = '#700';
+                ctx.fillText("GAME OVER!", 20, 150);
+                ctx.fillText("GAME OVER!", 25, 150);
+                ctx.fillText("GAME OVER!", 20, 155);
+                ctx.fillStyle = '#300';
+                ctx.fillText("GAME OVER!", 25, 155);
+                ctx.fillStyle = '#fc0';
+                ctx.fillText("GAME OVER!", 21, 151);			}
+        }
+
+        var iid = setInterval(one_frame, 1000.0 / 30);
+
+        var key = false;
+        document.addEventListener('keydown', function (ev) {
+            key = ev.which;
+        }, false);
+        document.addEventListener('keyup', function (ev) {
+            key = false;
+        }, false);
+
+    </script>
+</body>
+</html>

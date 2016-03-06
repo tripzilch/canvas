@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BUBBLES</title>
+    <meta charset="utf-8">
+    <style>
+        * { margin: 0; padding: 0; }
+        body { background: #322; }
+        #container {
+            width: 1100px;
+            margin: 5px auto 0px auto;
+            overflow: hidden;
+            position: relative;
+        }
+        #cc { color: #644; font: 12px/20px sans-serif; position: absolute; top: 5px; right: 5px; }
+        canvas {
+            margin: 5px 20px;
+            background: #000;
+            position: relative;
+            display: block;
+        }       
+        #controls input[type=range]:after {
+            display:block;
+            position: absolute;
+            top: 0px;
+            right: 310px;
+            font: 11px/30px Consolas, monospace;
+            content: attr(value);
+            color: #9ba;
+        }
+        #controls {
+            width: 990px;
+            padding: 9px;
+            border: 1px solid rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.1);
+            margin: 10px;   
+        }
+        #controls div { height: 50px; text-align: right; padding-right: 20px;}
+        #controls label { 
+            font: 14px/50px sans-serif;
+            padding-right: 10px;
+            color: #855;
+            vertical-align: middle;
+        }
+        #controls input {
+            display: inline;
+            vertical-align: middle;
+            height: 50px;
+            width: 850px;
+            position: relative;        
+        }
+        
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <canvas id="c" width="990" height="450"></canvas>
+        <form id="controls">
+            <div><label for="NCircles">N Circles</label><input id="NCircles" type="range" min="0" max="1000" step="1"  value="0" /></div>
+            <div><label for="Max. Radius">Radius</label><input id="Radius" type="range" min="1" max="500" step="1"  value="80" /></div>
+            <div><label for="BestOf">Try best of</label><input id="BestOf" type="range" min="1" max="250" step="1"  value="30" /></div>
+        </form>
+        <p id="cc">(c)BBB<sub>13</sub></p>
+    </div>
+    <script>
+        function randr(lo, hi) { return lo + ((hi - lo) * Math.random()) }
+        function rprime(N) { return [2,3,5,7,11,13,17,19,23,29,31,37][irand(N)] }
+        function pad(x, n, c) { return (Array(n).join(c||'0') + x).substr(-n) }
+
+
+        var canvas = document.getElementById("c");
+        var NCircles = document.getElementById("NCircles");
+        var Radius = document.getElementById("Radius");
+        var BestOf = document.getElementById("BestOf");
+        var ctx = canvas.getContext('2d');
+        var width  = canvas.width;
+        var height = this.height= canvas.height;
+        var short_edge = Math.min(width, height);
+        var long_edge = Math.max(width, height);
+        var tau = Math.PI * 2;
+        var sin = Math.sin;
+
+        function circle(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, tau); }
+
+        var circles = [];
+        var candidates = [];
+        
+        function update_max_radius(p) {
+            // find the maximum radius of a circle centered at (p[0],p[1]), without
+            // intersecting any of circles[]. returns and updates p[2] with this radius.            
+            var max = Math.max, sqrt = Math.sqrt;
+            var min_d = Radius.valueAsNumber;
+            var x = p[0], y = p[1], cc = circles;
+            for (var i = 0, c; (c = cc[i]) && (min_d > 0); i++) { // early exit when dist = 0
+                var dx = c[0] - x;
+                var dy = c[1] - y
+                var d = sqrt(dx*dx + dy*dy) - c[2];
+                if (d < min_d) min_d = d;
+            }
+            min_d = max(0, min_d);
+            p[2] = min_d;
+            return min_d;
+        }
+        
+        function sort_by_radius(a, b) { return b[2] - a[2]; }
+        
+        function find_best_circle() {
+            var K = BestOf.valueAsNumber;
+            // update candidates radii, dump candidates <= 0
+            candidates = candidates.filter(update_max_radius);
+            // add K/2 random circles > 0
+            var kk = Math.ceil(K * 1.25) - candidates.length;
+            while (kk > 0) {
+                var p = [randr(0, width), randr(0, height), 0];
+                if (update_max_radius(p)) {
+                    kk--;
+                    candidates.push(p);
+                }
+            }
+            // sort, clip and return optimum
+            candidates.sort(sort_by_radius);
+            candidates.splice(K);
+            return candidates.shift();
+        }
+
+        function draw_update() {
+            var N = NCircles.valueAsNumber;
+            circles.splice(N);
+            for (var i = circles.length; i < N; i++) {
+                circles.push(find_best_circle());
+            }
+            circles.sort(sort_by_radius); // sort from biggest to smallest for quicker early exit
+            
+            ctx.fillStyle = '#442200';
+            ctx.fillRect(0,0,width,height);
+            ctx.beginPath();
+            for (var i = 0; c = circles[i]; i++) {
+                circle(c[0], c[1], c[2]);
+            }
+            ctx.fillStyle = '#221100';
+            ctx.fill();
+            ctx.strokeStyle = '#aa5533';
+            ctx.stroke();
+        }
+        
+        var slider_iid;
+        NCircles.addEventListener('change', function(e) {
+            clearTimeout(slider_iid);
+            slider_iid = setTimeout(draw_update, 200);
+        }, false);
+        draw_update();
+        
+        // slider content number value updating magic
+        controls.addEventListener('change', function (e) { e.target.setAttribute('value', e.target.value) }, false);
+    </script>
+</body>
+
+</html>
+
+
+
+
